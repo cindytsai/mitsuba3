@@ -1,0 +1,22 @@
+<scene version="3.0.0">
+    <shape type="sphere">
+        <point name="center" x="0" y="0" z="0"/>
+        <float name="radius" value="5"/>
+        <bsdf type="diffuse"/>
+    </shape>
+
+    <integrator type="gravity">
+<!--        <integer name="max_depth" value="5"/>-->
+    </integrator>
+
+    <sensor type="perspective">
+        <float name="fov" value="45"/>
+        <transform name="to_world">
+            <!-- Move and rotate the camera so that looks from (-1, 0, 0) to (1, 0, 0)
+                and the direction (0, 0, 1) points "up" in the output image -->
+            <lookat origin="-1, 0, 0" target="1, 0, 0" up="0, 0, 1"/>
+        </transform>
+        <!-- film -->
+        <!-- sampler -->
+    </sensor>
+</scene>
