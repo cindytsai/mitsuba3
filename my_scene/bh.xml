@@ -5,14 +5,11 @@
         <integer name="rr_depth" value="1"/>
     </integrator>
 
-    <sensor type="orthographic" id="Camera-camera">
-        <!--        <string name="fov_axis" value="smaller"/>-->
-        <float name="focus_distance" value="6.0"/>
-        <!--        <float name="fov" value="26"/>-->
+    <sensor type="perspective" id="Camera-camera">
+        <float name="fov" value="45"/>
         <transform name="to_world">
-            <scale x="5" y="5"/>
             <lookat target="0, 0, 0"
-                    origin="0, -5, 0"
+                    origin="0, -4, 0"
                     up="0, 0, 1"/>
         </transform>
 
@@ -32,10 +29,10 @@
         <float name="fov" value="32"/>
 
         <transform name="to_world">
-            <lookat origin="0.0, -4, 0.0" target="0.0, 0.0, 0.0" up="0, 0, 1"/>
+            <lookat origin="0.0, 4, 0.0" target="0.0, 0.0, 0.0" up="0, 0, 1"/>
         </transform>
 
-        <float name="scale" value="65"/>
+        <float name="scale" value="1000"/>
 
         <texture type="bitmap" name="irradiance">
             <string name="filename" value="./grid.jpeg"/>
@@ -46,5 +43,21 @@
         <transform name="to_world">
             <translate y="0"/>
         </transform>
+    </shape>
+
+    <shape type="sphere">
+        <float name="radius" value="5"/>
+<!--        <emitter type="area">-->
+<!--            <rgb name="radiance" value="5.0"/>-->
+<!--        </emitter>-->
+        <boolean name="flip_normals" value="true"/>
+        <texture type="bitmap" name="irradiance">
+            <string name="filename" value="./grid.jpeg"/>
+        </texture>
+<!--        <texture name="reflectance" type="checkerboard">-->
+<!--            <transform name="to_uv">-->
+<!--                <scale x="10" y="10" />-->
+<!--            </transform>-->
+<!--        </texture>-->
     </shape>
 </scene>
