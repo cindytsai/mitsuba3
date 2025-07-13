@@ -32,12 +32,11 @@
     </shape>
 
     <emitter type="envmap">
-        <string name="filename" value="./grid.jpeg"/>
+        <string name="filename" value="./grid.jpg"/>
         <transform name="to_world">
             <lookat target="0, 0, 0"
                     origin="0, 100, 0"
                     up="0, 0, 1"/>
-<!--            <translate x="5" y="3" z="0"/>-->
         </transform>
     </emitter>
 
