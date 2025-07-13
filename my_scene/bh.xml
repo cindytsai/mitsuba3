@@ -1,0 +1,50 @@
+<scene version="3.0.0">
+
+    <default name="spp" value="64"/>
+    <integrator type="path">
+        <integer name="rr_depth" value="1"/>
+    </integrator>
+
+    <sensor type="orthographic" id="Camera-camera">
+        <!--        <string name="fov_axis" value="smaller"/>-->
+        <float name="focus_distance" value="6.0"/>
+        <!--        <float name="fov" value="26"/>-->
+        <transform name="to_world">
+            <scale x="5" y="5"/>
+            <lookat target="0, 0, 0"
+                    origin="0, -5, 0"
+                    up="0, 0, 1"/>
+        </transform>
+
+        <sampler type="independent">
+            <integer name="sample_count" value="$spp"/>
+        </sampler>
+
+        <film type="hdrfilm" id="film">
+            <integer name="width" value="720"/>
+            <integer name="height" value="720"/>
+            <string name="pixel_format" value="rgb"/>
+            <rfilter type="gaussian"/>
+        </film>
+    </sensor>
+
+    <emitter type="projector">
+        <float name="fov" value="32"/>
+
+        <transform name="to_world">
+            <lookat origin="0.0, -4, 0.0" target="0.0, 0.0, 0.0" up="0, 0, 1"/>
+        </transform>
+
+        <float name="scale" value="65"/>
+
+        <texture type="bitmap" name="irradiance">
+            <string name="filename" value="./grid.jpeg"/>
+        </texture>
+    </emitter>
+
+    <shape type="sphere">
+        <transform name="to_world">
+            <translate y="0"/>
+        </transform>
+    </shape>
+</scene>
