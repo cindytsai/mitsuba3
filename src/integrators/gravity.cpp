@@ -62,10 +62,13 @@ public:
         dr::tie(ls) = dr::while_loop(
             dr::make_tuple(ls), [](const LoopState &ls) { return ls.active; },
             [this, scene, bsdf_ctx](LoopState &ls) {
-                // TODO: for now, implement the intersection surface of the
-                // bending ray
+                // Map incoming ray from sensor to ray after the effect of gravity
+                Float d = shortest_distance_point_to_ray(ls.ray);
+                Ray3f bended_ray = Ray3f(ls.ray); // TODO: (START HERE)
+
+                // Use the calculated ray to get the emitter mapping
                 SurfaceInteraction3f si = scene->ray_intersect(
-                    ls.ray, +RayFlags::All, ls.depth == 0u);
+                    bended_ray, +RayFlags::All, ls.depth == 0u);
 
                 // Sample the background emitter using the calculated si
                 if (dr::any_or<true>(si.emitter(scene) != nullptr)) {
@@ -102,6 +105,33 @@ public:
 protected:
     /// Important: declare a protected virtual destructor
     // virtual ~GravityIntegrator();
+private:
+    static std::array<Float, 3> cross_product(const std::array<Float, 3> &a,
+                                              const std::array<Float, 3> &b) {
+        return { a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2],
+                 a[0] * b[1] - a[1] * b[0] };
+    }
+
+    static Float norm(const std::array<Float, 3> &a) {
+        return dr::sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+    }
+
+    static Float shortest_distance_point_to_ray(
+        const Ray3f &ray, const std::array<Float, 3> &p0 = { 0.0, 0.0, 0.0 }) {
+
+        // Ray info
+        std::array<Float, 3> p1 = { ray.o[0], ray.o[1], ray.o[2] };
+        std::array<Float, 3> p2 = { ray.o[0] + ray.d[0], ray.o[1] + ray.d[1],
+                                    ray.o[2] + ray.d[2] };
+
+        // Calculate the shortest distance from the ray to point p0
+        Float d = norm(cross_product(
+                      { p0[0] - p1[0], p0[1] - p1[1], p0[2] - p1[2] },
+                      { p0[0] - p2[0], p0[1] - p2[1], p0[2] - p2[2] })) /
+                  norm({ p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] });
+
+        return d;
+    }
 };
 
 /// Implement RTTI data structures
