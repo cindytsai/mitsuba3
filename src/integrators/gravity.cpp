@@ -159,6 +159,7 @@ private:
 
     static void effective_outgoing_ray(Ray3f &ray) {
         // This function changes ray.o and ray.d
+        // Currently, it is hard-coded.
 
         // For now, if the shortest distance is less than the radius simply
         // return assume sphere radius = 1
@@ -168,12 +169,33 @@ private:
         } else {
             // Rotation angle is calculated from the shortest distance d to
             // sphere
-            const Float kLargestBendingAngle = dr::Pi<Float>;
-            const Float kScaleFactor = 1.0f;
+            const Float kLargestBendingAngle = 1.0 / 3.0 * dr::Pi<Float>;
+            const Float kScaleFactor         = 0.5f;
             Float theta = kScaleFactor * kLargestBendingAngle * 1.0 / (d * d);
 
+            // Deal with ray.o first, because it needs ray.d
+
+            // Translate and rotate ray.o
+            std::array<Float, 3> ray_o = { ray.o[0], ray.o[1], ray.o[2] };
+            Float t = dr::sqrt(dr::square(ray.o[0]) + dr::square(ray.o[1]) +
+                               dr::square(ray.o[2]) - d * d);
+            // (1) Translate from sensor origin to point on sphere
+            Float norm_ray_d = norm({ray.d[0], ray.d[1], ray.d[2]});
+            ray_o[0] = ray.o[0] + (t / norm_ray_d) * ray.d[0];
+            ray_o[1] = ray.o[1] + (t / norm_ray_d) * ray.d[1];
+            ray_o[2] = ray.o[2] + (t / norm_ray_d) * ray.d[2];
+            // (2) Rotate theta angle
+            Float correct_angle = dr::atan(ray_o[0] / ray_o[2]);
+            ray_o = rotation("y", correct_angle, ray_o);
+            ray_o = rotation("x", -theta, ray_o);
+            ray_o = rotation("y", -correct_angle, ray_o);
+
+            for (int i = 0; i < 3; i++) {
+                ray.o[i] = ray_o[i];
+            }
+
             // Rotate ray.d
-            std::array<Float, 3> ray_d = {ray.d[0], ray.d[1], ray.d[2]};
+            std::array<Float, 3> ray_d = { ray.d[0], ray.d[1], ray.d[2] };
             // (1) Rotate back to y-z plane
             ray_d = rotation("y", dr::atan(ray.d[0] / ray.d[2]), ray_d);
             // (2) Rotate theta angle caused by the gravity
@@ -181,10 +203,9 @@ private:
             // (3) Rotate back to the original plane
             ray_d = rotation("y", -dr::atan(ray.d[0] / ray.d[2]), ray_d);
 
-            for (int i = 0; i < 3; i++) {ray.d[i] = ray_d[i];}
-
-            // Translate ray.o
-
+            for (int i = 0; i < 3; i++) {
+                ray.d[i] = ray_d[i];
+            }
 
             return;
         }
