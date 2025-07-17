@@ -58,13 +58,14 @@ public:
                  prev_si, prev_bsdf_pdf, prev_bsdf_delta,
                  active,  sampler };
 
-        // TODO: Get the right sample for the bending of rays
         dr::tie(ls) = dr::while_loop(
             dr::make_tuple(ls), [](const LoopState &ls) { return ls.active; },
             [this, scene, bsdf_ctx](LoopState &ls) {
-                // Map incoming ray from sensor to ray after the effect of gravity
-                Float d = shortest_distance_point_to_ray(ls.ray);
-                Ray3f bended_ray = Ray3f(ls.ray); // TODO: (START HERE)
+                // Map incoming ray from sensor to ray after the effect of
+                // gravity
+                Float d          = shortest_distance_point_to_ray(ls.ray);
+                Ray3f bended_ray = Ray3f(ls.ray);
+                effective_outgoing_ray(bended_ray);
 
                 // Use the calculated ray to get the emitter mapping
                 SurfaceInteraction3f si = scene->ray_intersect(
@@ -131,6 +132,62 @@ private:
                   norm({ p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] });
 
         return d;
+    }
+
+    static std::array<Float, 3> rotation(const std::string &axis,
+                                         const Float &theta,
+                                         const std::array<Float, 3> &p) {
+        std::array<Float, 3> rotated_p = p;
+        if (axis == "x") {
+            rotated_p[0] = p[0];
+            rotated_p[1] = dr::cos(theta) * p[1] - dr::sin(theta) * p[2];
+            rotated_p[2] = dr::sin(theta) * p[1] + dr::cos(theta) * p[2];
+        } else if (axis == "y") {
+            rotated_p[0] = dr::cos(theta) * p[0] + dr::sin(theta) * p[2];
+            rotated_p[1] = p[1];
+            rotated_p[2] = -dr::sin(theta) * p[0] + dr::cos(theta) * p[2];
+        } else if (axis == "z") {
+            rotated_p[0] = dr::cos(theta) * p[0] - dr::sin(theta) * p[1];
+            rotated_p[1] = dr::sin(theta) * p[0] + dr::cos(theta) * p[1];
+            rotated_p[2] = p[2];
+        } else {
+            std::string err_msg = "No axis " + axis;
+            Log(Error, err_msg.c_str());
+        }
+        return rotated_p;
+    }
+
+    static void effective_outgoing_ray(Ray3f &ray) {
+        // This function changes ray.o and ray.d
+
+        // For now, if the shortest distance is less than the radius simply
+        // return assume sphere radius = 1
+        Float d = shortest_distance_point_to_ray(ray);
+        if (dr::any(d < 1.0f)) {
+            return;
+        } else {
+            // Rotation angle is calculated from the shortest distance d to
+            // sphere
+            const Float kLargestBendingAngle = dr::Pi<Float>;
+            const Float kScaleFactor = 1.0f;
+            Float theta = kScaleFactor * kLargestBendingAngle * 1.0 / (d * d);
+
+            // Rotate ray.d
+            std::array<Float, 3> ray_d = {ray.d[0], ray.d[1], ray.d[2]};
+            // (1) Rotate back to y-z plane
+            ray_d = rotation("y", dr::atan(ray.d[0] / ray.d[2]), ray_d);
+            // (2) Rotate theta angle caused by the gravity
+            ray_d = rotation("x", -theta, ray_d);
+            // (3) Rotate back to the original plane
+            ray_d = rotation("y", -dr::atan(ray.d[0] / ray.d[2]), ray_d);
+
+            for (int i = 0; i < 3; i++) {ray.d[i] = ray_d[i];}
+
+            // Translate ray.o
+
+
+            return;
+        }
     }
 };
 
