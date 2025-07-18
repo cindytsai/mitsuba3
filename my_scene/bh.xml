@@ -1,9 +1,11 @@
 <scene version="3.0.0">
 
     <default name="spp" value="64"/>
-    <integrator type="path">
-        <integer name="rr_depth" value="1"/>
-    </integrator>
+<!--    <integrator type="path">-->
+<!--        <integer name="max_depth" value="1"/>-->
+<!--    </integrator>-->
+<!--    <integrator type="depth"/>-->
+    <integrator type="gravity"/>
 
     <sensor type="perspective" id="Camera-camera">
         <float name="fov" value="45"/>
@@ -25,14 +27,14 @@
         </film>
     </sensor>
 
-    <shape type="sphere">
+    <shape type="sphere" id="blackhole">
         <transform name="to_world">
             <translate y="0"/>
         </transform>
     </shape>
 
-    <emitter type="envmap">
-        <string name="filename" value="./grid.jpg"/>
+    <emitter type="envmap" id="envmap-background">
+        <string name="filename" value="./deepsky.jpg"/>
         <transform name="to_world">
             <lookat target="0, 0, 0"
                     origin="0, 100, 0"
