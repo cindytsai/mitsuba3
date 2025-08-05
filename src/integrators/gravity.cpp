@@ -4,6 +4,7 @@
 #include <mitsuba/render/emitter.h>
 #include <mitsuba/render/integrator.h>
 #include <mitsuba/render/records.h>
+#include "libyt.h"
 
 NAMESPACE_BEGIN(mitsuba)
 
@@ -13,7 +14,17 @@ public:
     MI_IMPORT_BASE(SamplingIntegrator, m_hide_emitters)
     MI_IMPORT_TYPES(Scene, Sampler, Medium, Emitter, EmitterPtr, BSDF, BSDFPtr)
 
-    GravityIntegrator(const Properties &props) : Base(props) {}
+    GravityIntegrator(const Properties &props) : Base(props) {
+        yt_param_libyt param_libyt;
+        param_libyt.verbose = YT_VERBOSE_INFO;
+        param_libyt.script = "inline";
+        param_libyt.check_data = false;
+
+        int argc = 0;
+        char *argv[] = {};
+
+        yt_initialize(argc, argv, &param_libyt);
+    }
 
     std::pair<Spectrum, Mask> sample(const Scene *scene, Sampler *sampler,
                                      const RayDifferential3f &ray_,
@@ -104,8 +115,10 @@ public:
 
     MI_DECLARE_CLASS()
 protected:
-    /// Important: declare a protected virtual destructor
-    // virtual ~GravityIntegrator();
+    // Important: declare a protected virtual destructor
+    ~GravityIntegrator() {
+        yt_finalize();
+    }
 private:
     static std::array<Float, 3> cross_product(const std::array<Float, 3> &a,
                                               const std::array<Float, 3> &b) {

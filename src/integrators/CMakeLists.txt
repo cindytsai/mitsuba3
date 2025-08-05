@@ -11,4 +11,8 @@ add_plugin(volpath    volpath.cpp)
 add_plugin(volpathmis volpathmis.cpp)
 add_plugin(gravity    gravity.cpp)
 
+target_link_libraries(gravity PRIVATE yt)
+target_link_directories(gravity PRIVATE ${LIBYT_PATH}/lib -lyt)
+target_include_directories(gravity PRIVATE ${LIBYT_PATH}/include)
+
 set(MI_PLUGIN_TARGETS "${MI_PLUGIN_TARGETS}" PARENT_SCOPE)
