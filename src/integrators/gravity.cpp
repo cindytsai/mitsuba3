@@ -5,6 +5,7 @@
 #include <mitsuba/render/integrator.h>
 #include <mitsuba/render/records.h>
 #include "libyt.h"
+#include <Python.h>
 
 NAMESPACE_BEGIN(mitsuba)
 
@@ -17,7 +18,7 @@ public:
     GravityIntegrator(const Properties &props) : Base(props) {
         yt_param_libyt param_libyt;
         param_libyt.verbose = YT_VERBOSE_INFO;
-        param_libyt.script = "inline";
+        param_libyt.script = "geodesic";
         param_libyt.check_data = false;
 
         int argc = 0;
@@ -76,7 +77,7 @@ public:
                 // gravity
                 Float d          = shortest_distance_point_to_ray(ls.ray);
                 Ray3f bended_ray = Ray3f(ls.ray);
-                effective_outgoing_ray(bended_ray);
+                effective_outgoing_ray(bended_ray, 2);
 
                 // Use the calculated ray to get the emitter mapping
                 SurfaceInteraction3f si = scene->ray_intersect(
@@ -170,55 +171,36 @@ private:
         return rotated_p;
     }
 
-    static void effective_outgoing_ray(Ray3f &ray) {
-        // This function changes ray.o and ray.d
-        // Currently, it is hard-coded.
+    /**
+     * This function computes incoming ray to outgoing ray due to the effect of
+     * gravity.
+     * @param ray ray.o (position) ray.d (direction) will be changed if
+     *            the light ray can escape the blackhole.
+     *            Otherwise, simply return
+     * @param radius radius of the event horizon, unit in (GM/c^2)
+     */
+    static void effective_outgoing_ray(Ray3f &ray, float radius) {
 
-        // For now, if the shortest distance is less than the radius simply
-        // return assume sphere radius = 1
+        // For now, if the shortest distance is less than the radius,
+        // simply return
         Float d = shortest_distance_point_to_ray(ray);
-        if (dr::any(d < 1.0f)) {
+        if (dr::any(d < radius)) {
             return;
         } else {
-            // Rotation angle is calculated from the shortest distance d to
-            // sphere
-            const Float kLargestBendingAngle = 1.0 / 3.0 * dr::Pi<Float>;
-            const Float kScaleFactor         = 0.5f;
-            Float theta = kScaleFactor * kLargestBendingAngle * 1.0 / (d * d);
+            // TODO: call bending_ray python function and map to ray.o and ray.d
+            yt_run_FunctionArguments("test_inline", 1, "(1, 2, 3)");
+            PyObject* py_module_sys = PyImport_ImportModule("sys");
+            PyObject* py_output = PyObject_GetAttrString(py_module_sys, "output");
+            std::string output = std::string(PyUnicode_AsUTF8(py_output));
+            Py_DECREF(py_module_sys);
+            Py_DECREF(py_output);
 
-            // Deal with ray.o first, because it needs ray.d
-
-            // Translate and rotate ray.o
-            std::array<Float, 3> ray_o = { ray.o[0], ray.o[1], ray.o[2] };
-            Float t = dr::sqrt(dr::square(ray.o[0]) + dr::square(ray.o[1]) +
-                               dr::square(ray.o[2]) - d * d);
-            // (1) Translate from sensor origin to point on sphere
-            Float norm_ray_d = norm({ray.d[0], ray.d[1], ray.d[2]});
-            ray_o[0] = ray.o[0] + (t / norm_ray_d) * ray.d[0];
-            ray_o[1] = ray.o[1] + (t / norm_ray_d) * ray.d[1];
-            ray_o[2] = ray.o[2] + (t / norm_ray_d) * ray.d[2];
-            // (2) Rotate theta angle
-            Float correct_angle = dr::atan(ray_o[0] / ray_o[2]);
-            ray_o = rotation("y", correct_angle, ray_o);
-            ray_o = rotation("x", -theta, ray_o);
-            ray_o = rotation("y", -correct_angle, ray_o);
-
-            for (int i = 0; i < 3; i++) {
-                ray.o[i] = ray_o[i];
-            }
-
-            // Rotate ray.d
-            std::array<Float, 3> ray_d = { ray.d[0], ray.d[1], ray.d[2] };
-            // (1) Rotate back to y-z plane
-            ray_d = rotation("y", dr::atan(ray.d[0] / ray.d[2]), ray_d);
-            // (2) Rotate theta angle caused by the gravity
-            ray_d = rotation("x", -theta, ray_d);
-            // (3) Rotate back to the original plane
-            ray_d = rotation("y", -dr::atan(ray.d[0] / ray.d[2]), ray_d);
-
-            for (int i = 0; i < 3; i++) {
-                ray.d[i] = ray_d[i];
-            }
+            // for (int i = 0; i < 3; i++) {
+            //     ray.o[i] = ray_o[i];
+            // }
+            // for (int i = 0; i < 3; i++) {
+            //     ray.d[i] = ray_d[i];
+            // }
 
             return;
         }
