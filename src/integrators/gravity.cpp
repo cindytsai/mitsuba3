@@ -4,6 +4,7 @@
 #include <mitsuba/render/emitter.h>
 #include <mitsuba/render/integrator.h>
 #include <mitsuba/render/records.h>
+#include <drjit/array.h>
 #include "libyt.h"
 #include <Python.h>
 #include <string>
@@ -195,11 +196,11 @@ private:
         } else {
 
             // Call get_outgoing_ray
-            char pos[100], mom[100];
-            // snprintf(pos, 100, "(%f, %f, %f)",  );
-            // snprintf(mom, 100, "(%f, %f, %f)", ray.d.x(), ray.d[1], ray.d[2]);
+            char pos_str[100], mom_str[100];
+            snprintf(pos_str, 100, "(%f, %f, %f)", ray.o[0], ray.o[1], ray.o[2]);
+            snprintf(mom_str, 100, "(%f, %f, %f)", ray.d[0], ray.d[1], ray.d[2]);
 
-            int result = yt_run_FunctionArguments("get_outgoing_ray", 2, "(0, -10, 0)", "(0, 1, 1)");
+            int result = yt_run_FunctionArguments("get_outgoing_ray", 2, pos_str, mom_str);
 
             // Read the results from sys
             PyObject* py_module_sys = PyImport_ImportModule("sys");
