@@ -132,7 +132,7 @@ def get_outgoing_ray(init_pos: tuple, init_mom: tuple):
                 omega=0.01,             # Small omega values lead to more stable integration
                 suppress_warnings=True, # Uncomment to view the tolerance warning
             )
-        except:
+        except ZeroDivisonError:
             pos = (0, 0, 0)
             mom = (0, 0, 0)
             break
@@ -163,3 +163,8 @@ def get_outgoing_ray(init_pos: tuple, init_mom: tuple):
     import sys
     sys.output_pos = (float(pos[0]), float(pos[1]), float(pos[2]))
     sys.output_mom = (float(mom[0]), float(mom[1]), float(mom[2]))
+
+    if np.linalg.norm(np.asarray(sys.output_mom)) == 0.0:
+        sys.output = False
+    else:
+        sys.output = True

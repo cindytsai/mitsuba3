@@ -6,6 +6,7 @@
 #include <mitsuba/render/records.h>
 #include "libyt.h"
 #include <Python.h>
+#include <string>
 
 NAMESPACE_BEGIN(mitsuba)
 
@@ -77,14 +78,18 @@ public:
                 // gravity
                 Float d          = shortest_distance_point_to_ray(ls.ray);
                 Ray3f bended_ray = Ray3f(ls.ray);
-                effective_outgoing_ray(bended_ray, 2);
+                bool valid = false;
+                effective_outgoing_ray(bended_ray, 2, valid);
 
-                // Use the calculated ray to get the emitter mapping
-                SurfaceInteraction3f si = scene->ray_intersect(
-                    bended_ray, +RayFlags::All, ls.depth == 0u);
+                // If the ray will fall into the blackhole,
+                // then ray.o and ray.d will be (0,0,0) and valid = false
+                // This is ok, since we are not going to consider the disk emission.
+                if (valid) {
+                    // Use the calculated ray to get the background emitter mapping
+                    // assume there is always a background emitter
+                    SurfaceInteraction3f si = scene->ray_intersect(
+                        bended_ray, +RayFlags::All, ls.depth == 0u);
 
-                // Sample the background emitter using the calculated si
-                if (dr::any_or<true>(si.emitter(scene) != nullptr)) {
                     DirectionSample3f ds(scene, si, ls.prev_si);
                     Float em_pdf = 0.0f;
 
@@ -178,8 +183,9 @@ private:
      *            the light ray can escape the blackhole.
      *            Otherwise, simply return
      * @param radius radius of the event horizon, unit in (GM/c^2)
+     * @param valid is the ray valid (False: fall into bh)
      */
-    static void effective_outgoing_ray(Ray3f &ray, float radius) {
+    static void effective_outgoing_ray(Ray3f &ray, float radius, bool &valid) {
 
         // For now, if the shortest distance is less than the radius,
         // simply return
@@ -187,20 +193,35 @@ private:
         if (dr::any(d < radius)) {
             return;
         } else {
-            // TODO: call bending_ray python function and map to ray.o and ray.d
-            yt_run_FunctionArguments("test_inline", 1, "(1, 2, 3)");
+
+            // Call get_outgoing_ray
+            char pos[100], mom[100];
+            // snprintf(pos, 100, "(%f, %f, %f)",  );
+            // snprintf(mom, 100, "(%f, %f, %f)", ray.d.x(), ray.d[1], ray.d[2]);
+
+            int result = yt_run_FunctionArguments("get_outgoing_ray", 2, "(0, -10, 0)", "(0, 1, 1)");
+
+            // Read the results from sys
             PyObject* py_module_sys = PyImport_ImportModule("sys");
             PyObject* py_output = PyObject_GetAttrString(py_module_sys, "output");
-            std::string output = std::string(PyUnicode_AsUTF8(py_output));
+            PyObject* py_output_pos = PyObject_GetAttrString(py_module_sys, "output_pos");
+            PyObject* py_output_mom = PyObject_GetAttrString(py_module_sys, "output_mom");
+
+            // Save the results to mitsuba
+            if (py_output == Py_True) {
+                valid = true;
+            } else {
+                valid = false;
+            }
+            for (Py_ssize_t i = 0; i < 3; i++) {
+                ray.o[i] = PyFloat_AS_DOUBLE(PyTuple_GET_ITEM(py_output_pos, i));
+                ray.d[i] = PyFloat_AS_DOUBLE(PyTuple_GET_ITEM(py_output_mom, i));
+            }
+
             Py_DECREF(py_module_sys);
             Py_DECREF(py_output);
-
-            // for (int i = 0; i < 3; i++) {
-            //     ray.o[i] = ray_o[i];
-            // }
-            // for (int i = 0; i < 3; i++) {
-            //     ray.d[i] = ray_d[i];
-            // }
+            Py_DECREF(py_output_pos);
+            Py_DECREF(py_output_mom);
 
             return;
         }
