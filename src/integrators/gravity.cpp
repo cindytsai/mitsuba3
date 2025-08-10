@@ -4,6 +4,7 @@
 #include <mitsuba/render/emitter.h>
 #include <mitsuba/render/integrator.h>
 #include <mitsuba/render/records.h>
+#include <fstream>
 
 NAMESPACE_BEGIN(mitsuba)
 
@@ -13,7 +14,9 @@ public:
     MI_IMPORT_BASE(SamplingIntegrator, m_hide_emitters)
     MI_IMPORT_TYPES(Scene, Sampler, Medium, Emitter, EmitterPtr, BSDF, BSDFPtr)
 
-    GravityIntegrator(const Properties &props) : Base(props) {}
+    GravityIntegrator(const Properties &props) : Base(props) {
+        initialize_table();
+    }
 
     std::pair<Spectrum, Mask> sample(const Scene *scene, Sampler *sampler,
                                      const RayDifferential3f &ray_,
@@ -65,14 +68,13 @@ public:
                 // gravity
                 Float d          = shortest_distance_point_to_ray(ls.ray);
                 Ray3f bended_ray = Ray3f(ls.ray);
-                effective_outgoing_ray(bended_ray);
+                bool valid = false;
+                effective_outgoing_ray(bended_ray, valid);
 
                 // Use the calculated ray to get the emitter mapping
-                SurfaceInteraction3f si = scene->ray_intersect(
-                    bended_ray, +RayFlags::All, ls.depth == 0u);
-
-                // Sample the background emitter using the calculated si
-                if (dr::any_or<true>(si.emitter(scene) != nullptr)) {
+                if (valid) {
+                    SurfaceInteraction3f si = scene->ray_intersect(
+                        bended_ray, +RayFlags::All, ls.depth == 0u);
                     DirectionSample3f ds(scene, si, ls.prev_si);
                     Float em_pdf = 0.0f;
 
@@ -107,6 +109,65 @@ protected:
     /// Important: declare a protected virtual destructor
     // virtual ~GravityIntegrator();
 private:
+    std::array<Float, 100> theta_table;
+    std::array<Float, 100> slope_yz_table;
+    std::array<bool, 100> valid_table;
+    std::array<Float, 100> pos_x_table;
+    std::array<Float, 100> pos_y_table;
+    std::array<Float, 100> pos_z_table;
+    std::array<Float, 100> mom_x_table;
+    std::array<Float, 100> mom_y_table;
+    std::array<Float, 100> mom_z_table;
+
+    static std::vector<std::string> split_string(const std::string& str) {
+        std::stringstream ss(str);
+        std::string token;
+        std::vector<std::string> tokens;
+        while (std::getline(ss, token, ',')) {
+            tokens.emplace_back(token);
+        }
+        return tokens;
+    }
+
+    void initialize_table() {
+        std::string coor_map_file = "coor_map.csv";
+        std::string bending_ray_file = "bending_ray_lookup_table.csv";
+        std::string line;
+
+        // coordinate map
+        std::ifstream coor_map(coor_map_file);
+        std::getline(coor_map, line);
+        std::size_t index = 0;
+        while (std::getline(coor_map, line)) {
+            std::vector<std::string> row = split_string(line);
+            theta_table.at(index) = std::stof(row.at(0));
+            slope_yz_table.at(index) = std::stof(row.at(1));
+            index = index + 1;
+        }
+        coor_map.close();
+
+        // bending ray map
+        std::ifstream bending_ray_map(bending_ray_file);
+        std::getline(bending_ray_map, line);
+        index = 0;
+        while (std::getline(bending_ray_map, line)) {
+            std::vector<std::string> row = split_string(line);
+            pos_x_table.at(index) = std::stof(row.at(1));
+            pos_y_table.at(index) = std::stof(row.at(2));
+            pos_z_table.at(index) = std::stof(row.at(3));
+            mom_x_table.at(index) = std::stof(row.at(4));
+            mom_y_table.at(index) = std::stof(row.at(5));
+            mom_z_table.at(index) = std::stof(row.at(6));
+            if (std::stoi(row.at(7)) == 1) {
+                valid_table.at(index) = true;
+            } else {
+                valid_table.at(index) = false;
+            }
+            index = index + 1;
+        }
+        bending_ray_map.close();
+    }
+
     static std::array<Float, 3> cross_product(const std::array<Float, 3> &a,
                                               const std::array<Float, 3> &b) {
         return { a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2],
@@ -157,14 +218,15 @@ private:
         return rotated_p;
     }
 
-    static void effective_outgoing_ray(Ray3f &ray) {
+    static void effective_outgoing_ray(Ray3f &ray, bool &valid) {
         // This function changes ray.o and ray.d
         // Currently, it is hard-coded.
 
         // For now, if the shortest distance is less than the radius simply
-        // return assume sphere radius = 1
+        // return assume sphere radius = 2
         Float d = shortest_distance_point_to_ray(ray);
-        if (dr::any(d < 1.0f)) {
+        if (dr::any(d < 2.0f)) {
+            valid = false;
             return;
         } else {
             // Rotation angle is calculated from the shortest distance d to
@@ -207,6 +269,7 @@ private:
                 ray.d[i] = ray_d[i];
             }
 
+            valid = true;
             return;
         }
     }
