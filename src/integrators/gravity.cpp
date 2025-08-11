@@ -75,23 +75,28 @@ public:
                 if (valid) {
                     SurfaceInteraction3f si = scene->ray_intersect(
                         bended_ray, +RayFlags::All, ls.depth == 0u);
-                    DirectionSample3f ds(scene, si, ls.prev_si);
-                    Float em_pdf = 0.0f;
 
-                    if (dr::any_or<true>(!ls.prev_bsdf_delta)) {
-                        em_pdf = scene->pdf_emitter_direction(
-                            ls.prev_si, ds, !ls.prev_bsdf_delta);
+                    if (dr::any_or<true>(si.emitter(scene) != nullptr)) {
+                        DirectionSample3f ds(scene, si, ls.prev_si);
+                        Float em_pdf = 0.0f;
+
+                        if (dr::any_or<true>(!ls.prev_bsdf_delta)) {
+                            em_pdf = scene->pdf_emitter_direction(
+                                ls.prev_si, ds, !ls.prev_bsdf_delta);
+                        }
+
+                        // Compute weight for emitter sample from previous bounce
+                        Float mis_bsdf = 1;
+
+                        // Sample the emitter and accumulate the results
+                        ls.result = dr::fmadd(
+                            ls.throughput,
+                            ds.emitter->eval(si, ls.prev_bsdf_pdf > 0.0f) *
+                                mis_bsdf,
+                            ls.result);
+                    } else {
+                        ls.result = 0;
                     }
-
-                    // Compute weight for emitter sample from previous bounce
-                    Float mis_bsdf = 1;
-
-                    // Sample the emitter and accumulate the results
-                    ls.result = dr::fmadd(
-                        ls.throughput,
-                        ds.emitter->eval(si, ls.prev_bsdf_pdf > 0.0f) *
-                            mis_bsdf,
-                        ls.result);
                 } else {
                     // If there is an intersection with the sphere, set the
                     // value manually
@@ -109,15 +114,14 @@ protected:
     /// Important: declare a protected virtual destructor
     // virtual ~GravityIntegrator();
 private:
-    std::array<Float, 100> theta_table;
-    std::array<Float, 100> slope_yz_table;
-    std::array<bool, 100> valid_table;
-    std::array<Float, 100> pos_x_table;
-    std::array<Float, 100> pos_y_table;
-    std::array<Float, 100> pos_z_table;
-    std::array<Float, 100> mom_x_table;
-    std::array<Float, 100> mom_y_table;
-    std::array<Float, 100> mom_z_table;
+    std::array<Float, 408> slope_yz_table;
+    std::array<Float, 408> pos_x_table;
+    std::array<Float, 408> pos_y_table;
+    std::array<Float, 408> pos_z_table;
+    std::array<Float, 408> mom_x_table;
+    std::array<Float, 408> mom_y_table;
+    std::array<Float, 408> mom_z_table;
+    std::array<bool, 408> valid_table;
 
     static std::vector<std::string> split_string(const std::string& str) {
         std::stringstream ss(str);
@@ -130,28 +134,16 @@ private:
     }
 
     void initialize_table() {
-        std::string coor_map_file = "coor_map.csv";
-        std::string bending_ray_file = "bending_ray_lookup_table.csv";
+        std::string lookup_table = "lookup_table.csv";
         std::string line;
 
-        // coordinate map
-        std::ifstream coor_map(coor_map_file);
-        std::getline(coor_map, line);
+        // read lookup table
+        std::ifstream table(lookup_table);
+        std::getline(table, line);
         std::size_t index = 0;
-        while (std::getline(coor_map, line)) {
+        while (std::getline(table, line)) {
             std::vector<std::string> row = split_string(line);
-            theta_table.at(index) = std::stof(row.at(0));
-            slope_yz_table.at(index) = std::stof(row.at(1));
-            index = index + 1;
-        }
-        coor_map.close();
-
-        // bending ray map
-        std::ifstream bending_ray_map(bending_ray_file);
-        std::getline(bending_ray_map, line);
-        index = 0;
-        while (std::getline(bending_ray_map, line)) {
-            std::vector<std::string> row = split_string(line);
+            slope_yz_table.at(index) = std::stof(row.at(0));
             pos_x_table.at(index) = std::stof(row.at(1));
             pos_y_table.at(index) = std::stof(row.at(2));
             pos_z_table.at(index) = std::stof(row.at(3));
@@ -165,7 +157,7 @@ private:
             }
             index = index + 1;
         }
-        bending_ray_map.close();
+        table.close();
     }
 
     static std::array<Float, 3> cross_product(const std::array<Float, 3> &a,

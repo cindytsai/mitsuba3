@@ -12,12 +12,8 @@ add_plugin(volpathmis volpathmis.cpp)
 add_plugin(gravity    gravity.cpp)
 
 configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/coor_map.csv
-        ${CMAKE_BINARY_DIR}/coor_map.csv COPYONLY
-)
-configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/bending_ray_lookup_table.csv
-        ${CMAKE_BINARY_DIR}/bending_ray_lookup_table.csv COPYONLY
+        ${CMAKE_CURRENT_SOURCE_DIR}/lookup_table.csv
+        ${CMAKE_BINARY_DIR}/lookup_table.csv COPYONLY
 )
 
 set(MI_PLUGIN_TARGETS "${MI_PLUGIN_TARGETS}" PARENT_SCOPE)
