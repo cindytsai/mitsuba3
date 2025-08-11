@@ -236,7 +236,7 @@ private:
 
             // interpolation
             Float m = slope - slope_yz_table.at(index);
-            Float n = slope - slope_yz_table.at(index + 1);
+            Float n = slope_yz_table.at(index + 1) - slope;
             out_pos[0] = (n * pos_x_table.at(index) + m * pos_x_table.at(index + 1)) / (m + n);
             out_pos[1] = (n * pos_y_table.at(index) + m * pos_y_table.at(index + 1)) / (m + n);
             out_pos[2] = (n * pos_z_table.at(index) + m * pos_z_table.at(index + 1)) / (m + n);
