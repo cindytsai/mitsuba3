@@ -68,8 +68,7 @@ public:
                 // gravity
                 Float d          = shortest_distance_point_to_ray(ls.ray);
                 Ray3f bended_ray = Ray3f(ls.ray);
-                bool valid = false;
-                effective_outgoing_ray(bended_ray, valid);
+                bool valid = effective_outgoing_ray(bended_ray);
 
                 // Use the calculated ray to get the emitter mapping
                 if (valid) {
@@ -212,22 +211,22 @@ private:
 
     void get_outgoing_ray(Float slope, std::array<Float, 3> &out_pos,
                           std::array<Float, 3> &out_mom, bool &valid) const {
+        // Deal with slope in positive and then flip it if it is negative
 
         bool slope_is_negative = false;
-        if (dr::any(slope < 0)) {
+        if (drjit::any(slope < 0)) {
             slope_is_negative = true;
             slope = -slope;
         }
 
-        // assume slope is positive
-        if (dr::any(slope < slope_yz_table.at(0))) {
+        if (drjit::any(slope < slope_yz_table.at(0))) {
             valid = false;
-        } else if (dr::any(slope >= slope_yz_table.at(slope_yz_table.size() - 1))) {
+        } else if (drjit::any(slope >= slope_yz_table.at(slope_yz_table.size() - 1))) {
             valid = true;
         } else {
             std::size_t index = 0;
-            for (std::size_t i = 0; i < slope_yz_table.size(); i++) {
-                if (dr::any(slope > slope_yz_table[i])) {
+            for (std::size_t i = 0; i < slope_yz_table.size() - 1; i++) {
+                if (drjit::any(slope < slope_yz_table[i+1])) {
                     index = i;
                     valid = valid_table.at(index);
                     break;
@@ -252,7 +251,7 @@ private:
         }
     }
 
-    void effective_outgoing_ray(Ray3f &ray, bool &valid) const {
+    bool effective_outgoing_ray(Ray3f &ray) const {
         // This function changes ray.o and ray.d
         // Currently, it is hard-coded.
 
@@ -260,8 +259,8 @@ private:
         // return assume sphere radius = 2
         Float d = shortest_distance_point_to_ray(ray);
         if (dr::any(d < 2.0f)) {
-            valid = false;
-            return;
+            bool valid = false;
+            return valid;
         } else {
             std::array<Float, 3> ray_o = {ray.o[0], ray.o[1], ray.o[2]};
             std::array<Float, 3> ray_d = {ray.d[0], ray.d[1], ray.d[2]};
@@ -272,6 +271,7 @@ private:
             Float slope = ray_d[2] / ray_d[1];
 
             // step2: map to the outgoing ray
+            bool valid;
             get_outgoing_ray(slope, ray_o, ray_d, valid);
 
             // step3: rotate back
@@ -283,7 +283,7 @@ private:
                 ray.o[i] = ray_o[i];
                 ray.d[i] = ray_d[i];
             }
-            return;
+            return valid;
         }
     }
 };
