@@ -210,7 +210,49 @@ private:
         return rotated_p;
     }
 
-    static void effective_outgoing_ray(Ray3f &ray, bool &valid) {
+    void get_outgoing_ray(Float slope, std::array<Float, 3> &out_pos,
+                          std::array<Float, 3> &out_mom, bool &valid) const {
+
+        bool slope_is_negative = false;
+        if (dr::any(slope < 0)) {
+            slope_is_negative = true;
+            slope = -slope;
+        }
+
+        // assume slope is positive
+        if (dr::any(slope < slope_yz_table.at(0))) {
+            valid = false;
+        } else if (dr::any(slope >= slope_yz_table.at(slope_yz_table.size() - 1))) {
+            valid = true;
+        } else {
+            std::size_t index = 0;
+            for (std::size_t i = 0; i < slope_yz_table.size(); i++) {
+                if (dr::any(slope > slope_yz_table[i])) {
+                    index = i;
+                    valid = valid_table.at(index);
+                    break;
+                }
+            }
+
+            // interpolation
+            Float m = slope - slope_yz_table.at(index);
+            Float n = slope - slope_yz_table.at(index + 1);
+            out_pos[0] = (n * pos_x_table.at(index) + m * pos_x_table.at(index + 1)) / (m + n);
+            out_pos[1] = (n * pos_y_table.at(index) + m * pos_y_table.at(index + 1)) / (m + n);
+            out_pos[2] = (n * pos_z_table.at(index) + m * pos_z_table.at(index + 1)) / (m + n);
+            out_mom[0] = (n * mom_x_table.at(index) + m * mom_x_table.at(index + 1)) / (m + n);
+            out_mom[1] = (n * mom_y_table.at(index) + m * mom_y_table.at(index + 1)) / (m + n);
+            out_mom[2] = (n * mom_z_table.at(index) + m * mom_z_table.at(index + 1)) / (m + n);
+
+            // deal with slope is negative before return
+            if (slope_is_negative) {
+                out_pos[2] = -out_pos[2];
+                out_mom[2] = -out_mom[2];
+            }
+        }
+    }
+
+    void effective_outgoing_ray(Ray3f &ray, bool &valid) const {
         // This function changes ray.o and ray.d
         // Currently, it is hard-coded.
 
@@ -221,47 +263,26 @@ private:
             valid = false;
             return;
         } else {
-            // Rotation angle is calculated from the shortest distance d to
-            // sphere
-            const Float kLargestBendingAngle = 1.0 / 3.0 * dr::Pi<Float>;
-            const Float kScaleFactor         = 0.5f;
-            Float theta = kScaleFactor * kLargestBendingAngle * 1.0 / (d * d);
+            std::array<Float, 3> ray_o = {ray.o[0], ray.o[1], ray.o[2]};
+            std::array<Float, 3> ray_d = {ray.d[0], ray.d[1], ray.d[2]};
 
-            // Deal with ray.o first, because it needs ray.d
+            // step1: rotate ray.d back to yz plane and get the slope_yz
+            Float theta_fix = dr::atan(ray.d[0] / ray.d[2]);
+            ray_d = rotation("y", theta_fix, ray_d);
+            Float slope = ray_d[2] / ray_d[1];
 
-            // Translate and rotate ray.o
-            std::array<Float, 3> ray_o = { ray.o[0], ray.o[1], ray.o[2] };
-            Float t = dr::sqrt(dr::square(ray.o[0]) + dr::square(ray.o[1]) +
-                               dr::square(ray.o[2]) - d * d);
-            // (1) Translate from sensor origin to point on sphere
-            Float norm_ray_d = norm({ray.d[0], ray.d[1], ray.d[2]});
-            ray_o[0] = ray.o[0] + (t / norm_ray_d) * ray.d[0];
-            ray_o[1] = ray.o[1] + (t / norm_ray_d) * ray.d[1];
-            ray_o[2] = ray.o[2] + (t / norm_ray_d) * ray.d[2];
-            // (2) Rotate theta angle
-            Float correct_angle = dr::atan(ray_o[0] / ray_o[2]);
-            ray_o = rotation("y", correct_angle, ray_o);
-            ray_o = rotation("x", -theta, ray_o);
-            ray_o = rotation("y", -correct_angle, ray_o);
+            // step2: map to the outgoing ray
+            get_outgoing_ray(slope, ray_o, ray_d, valid);
 
+            // step3: rotate back
+            ray_o = rotation("y", -theta_fix, ray_o);
+            ray_d = rotation("y", -theta_fix, ray_d);
+
+            // map to value
             for (int i = 0; i < 3; i++) {
                 ray.o[i] = ray_o[i];
-            }
-
-            // Rotate ray.d
-            std::array<Float, 3> ray_d = { ray.d[0], ray.d[1], ray.d[2] };
-            // (1) Rotate back to y-z plane
-            ray_d = rotation("y", dr::atan(ray.d[0] / ray.d[2]), ray_d);
-            // (2) Rotate theta angle caused by the gravity
-            ray_d = rotation("x", -theta, ray_d);
-            // (3) Rotate back to the original plane
-            ray_d = rotation("y", -dr::atan(ray.d[0] / ray.d[2]), ray_d);
-
-            for (int i = 0; i < 3; i++) {
                 ray.d[i] = ray_d[i];
             }
-
-            valid = true;
             return;
         }
     }
