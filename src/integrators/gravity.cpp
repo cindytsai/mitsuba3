@@ -268,15 +268,15 @@ private:
 
             // step1: rotate ray.d back to yz plane and get the slope_yz
             Float theta_fix = dr::atan(ray.d[0] / ray.d[2]);
-            ray_d = rotation("y", theta_fix, ray_d);
+            ray_d = rotation("y", -theta_fix, ray_d);
             Float slope = ray_d[2] / ray_d[1];
 
             // step2: map to the outgoing ray
             get_outgoing_ray(slope, ray_o, ray_d, valid);
 
             // step3: rotate back
-            ray_o = rotation("y", -theta_fix, ray_o);
-            ray_d = rotation("y", -theta_fix, ray_d);
+            ray_o = rotation("y", theta_fix, ray_o);
+            ray_d = rotation("y", theta_fix, ray_d);
 
             // map to value
             for (int i = 0; i < 3; i++) {
