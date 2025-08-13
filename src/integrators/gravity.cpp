@@ -113,14 +113,14 @@ protected:
     /// Important: declare a protected virtual destructor
     // virtual ~GravityIntegrator();
 private:
-    std::array<Float, 408> slope_yz_table;
-    std::array<Float, 408> pos_x_table;
-    std::array<Float, 408> pos_y_table;
-    std::array<Float, 408> pos_z_table;
-    std::array<Float, 408> mom_x_table;
-    std::array<Float, 408> mom_y_table;
-    std::array<Float, 408> mom_z_table;
-    std::array<bool, 408> valid_table;
+    std::vector<Float> slope_yz_table;
+    std::vector<Float> pos_x_table;
+    std::vector<Float> pos_y_table;
+    std::vector<Float> pos_z_table;
+    std::vector<Float> mom_x_table;
+    std::vector<Float> mom_y_table;
+    std::vector<Float> mom_z_table;
+    std::vector<bool> valid_table;
 
     static std::vector<std::string> split_string(const std::string& str) {
         std::stringstream ss(str);
@@ -139,22 +139,23 @@ private:
         // read lookup table
         std::ifstream table(lookup_table);
         std::getline(table, line);
-        std::size_t index = 0;
         while (std::getline(table, line)) {
-            std::vector<std::string> row = split_string(line);
-            slope_yz_table.at(index) = std::stof(row.at(0));
-            pos_x_table.at(index) = std::stof(row.at(1));
-            pos_y_table.at(index) = std::stof(row.at(2));
-            pos_z_table.at(index) = std::stof(row.at(3));
-            mom_x_table.at(index) = std::stof(row.at(4));
-            mom_y_table.at(index) = std::stof(row.at(5));
-            mom_z_table.at(index) = std::stof(row.at(6));
-            if (std::stoi(row.at(7)) == 1) {
-                valid_table.at(index) = true;
-            } else {
-                valid_table.at(index) = false;
+            if (line.empty()) {
+                break;
             }
-            index = index + 1;
+            std::vector<std::string> row = split_string(line);
+            slope_yz_table.emplace_back(std::stof(row.at(0)));
+            pos_x_table.emplace_back(std::stof(row.at(7)));
+            pos_y_table.emplace_back(std::stof(row.at(8)));
+            pos_z_table.emplace_back(std::stof(row.at(9)));
+            mom_x_table.emplace_back(std::stof(row.at(10)));
+            mom_y_table.emplace_back(std::stof(row.at(11)));
+            mom_z_table.emplace_back(std::stof(row.at(12)));
+            if (std::stoi(row.at(13)) == 1) {
+                valid_table.emplace_back(true);
+            } else {
+                valid_table.emplace_back(false);
+            }
         }
         table.close();
     }
