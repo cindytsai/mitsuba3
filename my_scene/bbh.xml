@@ -1,0 +1,53 @@
+<scene version="3.0.0">
+
+    <default name="spp" value="1"/>
+    <integrator type="path">
+        <integer name="max_depth" value="1"/>
+    </integrator>
+<!--    <integrator type="depth"/>-->
+<!--    <integrator type="gravity"/>-->
+
+    <sensor type="perspective" id="Camera-camera">
+        <float name="fov" value="45"/>
+        <transform name="to_world">
+            <lookat target="-15, 0, 0"
+                    origin="-15, 0, 100"
+                    up="0, 1, 0"/>
+        </transform>
+
+        <sampler type="independent">
+            <integer name="sample_count" value="$spp"/>
+        </sampler>
+
+        <film type="hdrfilm" id="film">
+            <integer name="width" value="700"/>
+            <integer name="height" value="700"/>
+            <string name="pixel_format" value="rgb"/>
+            <rfilter type="gaussian"/>
+        </film>
+    </sensor>
+
+    <shape type="sphere" id="blackhole-1">
+        <transform name="to_world">
+            <translate x="10" y="0" z="0"/>
+        </transform>
+        <float name="radius" value="8"/>
+    </shape>
+
+    <shape type="sphere" id="blackhole-2">
+        <transform name="to_world">
+            <translate x="-40" y="0" z="0"/>
+        </transform>
+        <float name="radius" value="2"/>
+    </shape>
+
+    <emitter type="envmap" id="envmap-background">
+        <string name="filename" value="./grid.jpg"/>
+        <transform name="to_world">
+            <lookat target="0, 0, 0"
+                    origin="0, 0, 10000"
+                    up="1, 0, 0"/>
+        </transform>
+    </emitter>
+
+</scene>
