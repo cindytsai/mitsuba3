@@ -1,11 +1,14 @@
 <scene version="3.0.0">
 
     <default name="spp" value="1"/>
-    <integrator type="path">
-        <integer name="max_depth" value="1"/>
-    </integrator>
+<!--    <integrator type="path">-->
+<!--        <integer name="max_depth" value="1"/>-->
+<!--    </integrator>-->
 <!--    <integrator type="depth"/>-->
-<!--    <integrator type="gravity"/>-->
+    <integrator type="gravity">
+        <string name="ray_coordinates" value="ray.txt"/>
+        <string name="lookup_table" value="lookup_table.txt"/>
+    </integrator>
 
     <sensor type="perspective" id="Camera-camera">
         <float name="fov" value="45"/>

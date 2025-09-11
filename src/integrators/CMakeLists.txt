@@ -10,10 +10,4 @@ add_plugin(stokes     stokes.cpp)
 add_plugin(volpath    volpath.cpp)
 add_plugin(volpathmis volpathmis.cpp)
 add_plugin(gravity    gravity.cpp)
-
-configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/lookup_table.csv
-        ${CMAKE_BINARY_DIR}/lookup_table.csv COPYONLY
-)
-
 set(MI_PLUGIN_TARGETS "${MI_PLUGIN_TARGETS}" PARENT_SCOPE)

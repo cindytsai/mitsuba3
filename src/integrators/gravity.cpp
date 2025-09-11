@@ -15,7 +15,17 @@ public:
     MI_IMPORT_TYPES(Scene, Sampler, Medium, Emitter, EmitterPtr, BSDF, BSDFPtr)
 
     GravityIntegrator(const Properties &props) : Base(props) {
-        initialize_table();
+        if (props.has_property("ray_coordinates")) {
+            this->ray_coordinates_filename = props.string("ray_coordinates");
+        }
+        if (props.has_property("lookup_table")) {
+            this->lookup_table_filename = props.string("lookup_table");
+        }
+
+        Log(Info, "ray_coordinates: '%s', lookup_table: '%s'",
+            this->ray_coordinates_filename, this->lookup_table_filename);
+
+        read_lookup_table();
     }
 
     std::pair<Spectrum, Mask> sample(const Scene *scene, Sampler *sampler,
@@ -113,6 +123,9 @@ protected:
     /// Important: declare a protected virtual destructor
     // virtual ~GravityIntegrator();
 private:
+    std::string ray_coordinates_filename = "ray_coordinates.txt";
+    std::string lookup_table_filename = "lookup_table.txt";
+
     std::vector<Float> slope_yz_table;
     std::vector<Float> pos_x_table;
     std::vector<Float> pos_y_table;
@@ -132,12 +145,20 @@ private:
         return tokens;
     }
 
-    void initialize_table() {
-        std::string lookup_table = "lookup_table.csv";
-        std::string line;
-
+    /**
+     * read_lookup_table:
+     *    TODO: create table structure to map the ray and do interpolation
+     */
+    void read_lookup_table() {
         // read lookup table
-        std::ifstream table(lookup_table);
+        std::ifstream table(this->lookup_table_filename);
+        if (!table.is_open()) {
+            Log(Warn, "No lookup table file '%s', so this run will only dump the ray coordinates. "
+                      "Next, use the coordinates to construct the lookup table.", this->lookup_table_filename);
+            return;
+        }
+
+        std::string line;
         std::getline(table, line);
         while (std::getline(table, line)) {
             if (line.empty()) {
@@ -210,6 +231,10 @@ private:
         return rotated_p;
     }
 
+    /**
+     * TODO: merge get_outgoing_ray and effective_outgoing_ray
+     *
+     */
     void get_outgoing_ray(Float slope, std::array<Float, 3> &out_pos,
                           std::array<Float, 3> &out_mom, bool &valid) const {
         // Deal with slope in positive and then flip it if it is negative
