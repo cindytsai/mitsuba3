@@ -11,7 +11,7 @@
         <float name="fov" value="45"/>
         <transform name="to_world">
             <lookat target="0, 0, 0"
-                    origin="0, -10, 0"
+                    origin="0, -20, 0"
                     up="0, 0, 1"/>
         </transform>
 
@@ -31,13 +31,14 @@
         <transform name="to_world">
             <translate y="0"/>
         </transform>
+        <float name="radius" value="2"/>
     </shape>
 
     <emitter type="envmap" id="envmap-background">
         <string name="filename" value="./deepsky.jpg"/>
         <transform name="to_world">
             <lookat target="0, 0, 0"
-                    origin="0, 100, 0"
+                    origin="0, 10000, 0"
                     up="0, 0, 1"/>
         </transform>
     </emitter>
