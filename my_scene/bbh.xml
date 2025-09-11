@@ -27,6 +27,9 @@
         </film>
     </sensor>
 
+    <!-- Basic info of BBH system
+         m1 = 4, m2 = 1, b = 50,
+         The origin (0,0,0) is there rotation center -->
     <shape type="sphere" id="blackhole-1">
         <transform name="to_world">
             <translate x="10" y="0" z="0"/>
