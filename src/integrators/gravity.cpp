@@ -15,8 +15,13 @@ public:
     MI_IMPORT_TYPES(Scene, Sampler, Medium, Emitter, EmitterPtr, BSDF, BSDFPtr)
 
     GravityIntegrator(const Properties &props) : Base(props) {
+        // TODO: this doesn't read/write the file in the same folder as bbh.xml
         if (props.has_property("ray_coordinates")) {
             this->ray_coordinates_filename = props.string("ray_coordinates");
+            store_ray_coordinate = true;
+            create_ray_file();
+        } else {
+            store_ray_coordinate = false;
         }
         if (props.has_property("lookup_table")) {
             this->lookup_table_filename = props.string("lookup_table");
@@ -40,6 +45,15 @@ public:
         Spectrum result     = 0.0f;
         Float eta           = 1.0f;
         UInt32 depth        = 0;
+
+        // write original rays to file
+        if (store_ray_coordinate) {
+            std::ofstream of;
+            of.open(ray_coordinates_filename, std::ios::app);
+            of << ray.o[0] << "," << ray.o[1] << "," << ray.o[2] << ",";
+            of << ray.d[0] << "," << ray.d[1] << "," << ray.d[2] << "\n";
+            of.close();
+        }
 
         Mask valid_ray = !m_hide_emitters && (scene->environment() != nullptr);
 
@@ -123,8 +137,10 @@ protected:
     /// Important: declare a protected virtual destructor
     // virtual ~GravityIntegrator();
 private:
-    std::string ray_coordinates_filename = "ray_coordinates.txt";
+    std::string ray_coordinates_filename;
     std::string lookup_table_filename = "lookup_table.txt";
+    bool has_lookup_table = false;
+    bool store_ray_coordinate = false;
 
     std::vector<Float> slope_yz_table;
     std::vector<Float> pos_x_table;
@@ -145,6 +161,12 @@ private:
         return tokens;
     }
 
+    void create_ray_file() {
+        std::ofstream ray_file(ray_coordinates_filename);
+        ray_file << "in_pos_x,in_pos_y,in_pos_z,in_dir_x,in_dir_y,in_dir_z\n";
+        ray_file.close();
+    }
+
     /**
      * read_lookup_table:
      *    TODO: create table structure to map the ray and do interpolation
@@ -153,8 +175,8 @@ private:
         // read lookup table
         std::ifstream table(this->lookup_table_filename);
         if (!table.is_open()) {
-            Log(Warn, "No lookup table file '%s', so this run will only dump the ray coordinates. "
-                      "Next, use the coordinates to construct the lookup table.", this->lookup_table_filename);
+            Log(Warn, "No lookup table file '%s', so this run will only dump the ray coordinates.",
+                this->lookup_table_filename);
             return;
         }
 
@@ -179,6 +201,7 @@ private:
             }
         }
         table.close();
+        has_lookup_table = true;
     }
 
     static std::array<Float, 3> cross_product(const std::array<Float, 3> &a,
@@ -237,8 +260,13 @@ private:
      */
     void get_outgoing_ray(Float slope, std::array<Float, 3> &out_pos,
                           std::array<Float, 3> &out_mom, bool &valid) const {
-        // Deal with slope in positive and then flip it if it is negative
+        // return origin ray if no lookup table
+        if (!has_lookup_table) {
+            valid = true;
+            return;
+        }
 
+        // Deal with slope in positive and then flip it if it is negative
         bool slope_is_negative = false;
         if (drjit::any(slope < 0)) {
             slope_is_negative = true;
