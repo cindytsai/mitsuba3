@@ -6,16 +6,19 @@
 <!--    </integrator>-->
 <!--    <integrator type="depth"/>-->
     <integrator type="gravity">
-        <string name="ray_coordinates" value="ray.txt"/>
-        <string name="lookup_table" value="lookup_table.txt"/>
+        <string name="ray_coordinates" value="./ray1.txt"/>
+        <string name="lookup_table" value="./lookup_table.txt"/>
+        <string name="project_to" value="xz"/>
+        <integer name="width" value="10"/>
+        <integer name="height" value="20"/>
     </integrator>
 
     <sensor type="perspective" id="Camera-camera">
         <float name="fov" value="45"/>
         <transform name="to_world">
             <lookat target="-15, 0, 0"
-                    origin="-15, 0, 100"
-                    up="0, 1, 0"/>
+                    origin="-15, -150, 0"
+                    up="0, 0, 1"/>
         </transform>
 
         <sampler type="independent">

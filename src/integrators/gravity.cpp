@@ -23,6 +23,19 @@ public:
         } else {
             store_ray_coordinate = false;
         }
+
+        if (props.has_property("project_to")) {
+            this->project_to = props.string("project_to");
+        }
+
+        if (props.has_property("width")) {
+            this->table_shape[0] = props.get<int>("width");
+        }
+
+        if (props.has_property("height")) {
+            this->table_shape[1] = props.get<int>("height");
+        }
+
         if (props.has_property("lookup_table")) {
             this->lookup_table_filename = props.string("lookup_table");
         }
@@ -143,7 +156,7 @@ private:
     bool store_ray_coordinate = false;
 
     std::string project_to = "xy";
-    std::array<int, 2> table_shape;
+    std::array<int, 2> table_shape = {-1, -1};
     std::vector<std::array<Float,3>> in_sample_pos;
     std::vector<std::array<Float,3>> out_ray_pos;
     std::vector<std::array<Float,3>> out_ray_dir;
@@ -191,7 +204,13 @@ private:
             out_ray_dir.emplace_back(out_dir);
         }
         table.close();
-        has_lookup_table = true;
+
+        // make sure project_to/width/height are set
+        if (table_shape[0] > 0 && table_shape[1] > 0) {
+            has_lookup_table = true;
+        } else {
+            has_lookup_table = false;
+        }
     }
 
     static std::array<Float, 3> cross_product(const std::array<Float, 3> &a,
