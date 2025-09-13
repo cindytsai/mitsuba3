@@ -142,14 +142,11 @@ private:
     bool has_lookup_table = false;
     bool store_ray_coordinate = false;
 
-    std::vector<Float> slope_yz_table;
-    std::vector<Float> pos_x_table;
-    std::vector<Float> pos_y_table;
-    std::vector<Float> pos_z_table;
-    std::vector<Float> mom_x_table;
-    std::vector<Float> mom_y_table;
-    std::vector<Float> mom_z_table;
-    std::vector<bool> valid_table;
+    std::string project_to = "xy";
+    std::array<int, 2> table_shape;
+    std::vector<std::array<Float,3>> in_sample_pos;
+    std::vector<std::array<Float,3>> out_ray_pos;
+    std::vector<std::array<Float,3>> out_ray_dir;
 
     static std::vector<std::string> split_string(const std::string& str) {
         std::stringstream ss(str);
@@ -168,8 +165,7 @@ private:
     }
 
     /**
-     * read_lookup_table:
-     *    TODO: create table structure to map the ray and do interpolation
+     * read_lookup_table
      */
     void read_lookup_table() {
         // read lookup table
@@ -187,18 +183,12 @@ private:
                 break;
             }
             std::vector<std::string> row = split_string(line);
-            slope_yz_table.emplace_back(std::stof(row.at(0)));
-            pos_x_table.emplace_back(std::stof(row.at(7)));
-            pos_y_table.emplace_back(std::stof(row.at(8)));
-            pos_z_table.emplace_back(std::stof(row.at(9)));
-            mom_x_table.emplace_back(std::stof(row.at(10)));
-            mom_y_table.emplace_back(std::stof(row.at(11)));
-            mom_z_table.emplace_back(std::stof(row.at(12)));
-            if (std::stoi(row.at(13)) == 1) {
-                valid_table.emplace_back(true);
-            } else {
-                valid_table.emplace_back(false);
-            }
+            std::array<Float, 3> sample{stof(row.at(0)), stof(row.at(1)), stof(row.at(2))};
+            std::array<Float, 3> out_pos{stof(row.at(3)), stof(row.at(4)), stof(row.at(5))};
+            std::array<Float, 3> out_dir{stof(row.at(6)), stof(row.at(7)), stof(row.at(8))};
+            in_sample_pos.emplace_back(sample);
+            out_ray_pos.emplace_back(out_pos);
+            out_ray_dir.emplace_back(out_dir);
         }
         table.close();
         has_lookup_table = true;
@@ -255,8 +245,7 @@ private:
     }
 
     /**
-     * TODO: merge get_outgoing_ray and effective_outgoing_ray
-     *
+     * get_outgoing_ray: this looks up the table and return the
      */
     void get_outgoing_ray(Float slope, std::array<Float, 3> &out_pos,
                           std::array<Float, 3> &out_mom, bool &valid) const {
@@ -266,44 +255,8 @@ private:
             return;
         }
 
-        // Deal with slope in positive and then flip it if it is negative
-        bool slope_is_negative = false;
-        if (drjit::any(slope < 0)) {
-            slope_is_negative = true;
-            slope = -slope;
-        }
-
-        if (drjit::any(slope < slope_yz_table.at(0))) {
-            valid = false;
-        } else if (drjit::any(slope >= slope_yz_table.at(slope_yz_table.size() - 1))) {
-            valid = true;
-        } else {
-            std::size_t index = 0;
-            for (std::size_t i = 0; i < slope_yz_table.size() - 1; i++) {
-                if (drjit::any(slope < slope_yz_table[i+1])) {
-                    index = i;
-                    valid = valid_table.at(index);
-                    break;
-                }
-            }
-
-            // interpolation
-            Float m = slope - slope_yz_table.at(index);
-            Float n = slope_yz_table.at(index + 1) - slope;
-            out_pos[0] = (n * pos_x_table.at(index) + m * pos_x_table.at(index + 1)) / (m + n);
-            out_pos[1] = (n * pos_y_table.at(index) + m * pos_y_table.at(index + 1)) / (m + n);
-            out_pos[2] = (n * pos_z_table.at(index) + m * pos_z_table.at(index + 1)) / (m + n);
-            out_mom[0] = (n * mom_x_table.at(index) + m * mom_x_table.at(index + 1)) / (m + n);
-            out_mom[1] = (n * mom_y_table.at(index) + m * mom_y_table.at(index + 1)) / (m + n);
-            out_mom[2] = (n * mom_z_table.at(index) + m * mom_z_table.at(index + 1)) / (m + n);
-
-            // deal with slope is negative before return
-            if (slope_is_negative) {
-                out_pos[2] = -out_pos[2];
-                out_mom[2] = -out_mom[2];
-            }
-        }
     }
+
 
     bool effective_outgoing_ray(Ray3f &ray) const {
         // This function changes ray.o and ray.d
@@ -325,7 +278,7 @@ private:
             Float slope = ray_d[2] / ray_d[1];
 
             // step2: map to the outgoing ray
-            bool valid;
+            bool valid = true;
             get_outgoing_ray(slope, ray_o, ray_d, valid);
 
             // step3: rotate back
