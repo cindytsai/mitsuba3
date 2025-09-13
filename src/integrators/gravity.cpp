@@ -28,12 +28,8 @@ public:
             this->project_to = props.string("project_to");
         }
 
-        if (props.has_property("width")) {
-            this->table_shape[0] = props.get<int>("width");
-        }
-
-        if (props.has_property("height")) {
-            this->table_shape[1] = props.get<int>("height");
+        if (props.has_property("stride")) {
+            this->stride = props.get<int>("stride");
         }
 
         if (props.has_property("lookup_table")) {
@@ -156,7 +152,7 @@ private:
     bool store_ray_coordinate = false;
 
     std::string project_to = "xy";
-    std::array<int, 2> table_shape = {-1, -1};
+    int stride = -1;
     std::vector<std::array<Float,3>> in_sample_pos;
     std::vector<std::array<Float,3>> out_ray_pos;
     std::vector<std::array<Float,3>> out_ray_dir;
@@ -206,7 +202,7 @@ private:
         table.close();
 
         // make sure project_to/width/height are set
-        if (table_shape[0] > 0 && table_shape[1] > 0) {
+        if (stride > 0) {
             has_lookup_table = true;
         } else {
             has_lookup_table = false;
