@@ -36,6 +36,22 @@ public:
             this->lookup_table_filename = props.string("lookup_table");
         }
 
+        if (props.has_property("n1")) {
+            this->sample_plane[0] = props.get<Float>("n1");
+        }
+
+        if (props.has_property("n2")) {
+            this->sample_plane[1] = props.get<Float>("n2");
+        }
+
+        if (props.has_property("n3")) {
+            this->sample_plane[2] = props.get<Float>("n3");
+        }
+
+        if (props.has_property("m")) {
+            this->sample_plane[3] = props.get<Float>("m");
+        }
+
         Log(Info, "ray_coordinates: '%s', lookup_table: '%s'",
             this->ray_coordinates_filename, this->lookup_table_filename);
 
@@ -152,6 +168,7 @@ private:
 
     std::string project_to = "xy";
     int stride = -1;
+    std::array<Float, 4> sample_plane = {0, 0, 0, 0};
     std::vector<std::array<Float,3>> in_sample_pos;
     std::vector<std::array<Float,3>> out_ray_pos;
     std::vector<std::array<Float,3>> out_ray_dir;
@@ -253,17 +270,26 @@ private:
         }
     }
 
+    void project_to_sample_plane(std::array<Float, 3>& sample, std::array<Float, 3> ray_o, std::array<Float, 3> ray_d) const {
+        Float t = -(sample_plane[0] * ray_o[0] + sample_plane[1] * ray_o[1] + sample_plane[2] * ray_o[2] - sample_plane[3]) / (sample_plane[0] * ray_d[0] + sample_plane[1] * ray_d[1] + sample_plane[2] * ray_d[2]);
+
+        for (int i = 0; i < 3; i++) {
+            sample[i] = ray_o[i] + t * ray_d[i];
+        }
+    }
 
     bool effective_outgoing_ray(Ray3f &ray) const {
+        // project ray onto sample plane
         std::array<Float, 3> sample = {0.0, 0.0, 0.0};
         std::array<Float, 3> ray_o = {ray.o[0], ray.o[1], ray.o[2]};
         std::array<Float, 3> ray_d = {ray.d[0], ray.d[1], ray.d[2]};
+        project_to_sample_plane(sample, ray_o, ray_d);
 
         // get the outgoing ray through lookup map
         bool valid = true;
         get_outgoing_ray(sample, ray_o, ray_d, valid);
 
-        // map to value
+        // update value
         for (int i = 0; i < 3; i++) {
             ray.o[i] = ray_o[i];
             ray.d[i] = ray_d[i];
