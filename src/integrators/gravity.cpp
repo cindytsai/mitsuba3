@@ -99,7 +99,6 @@ public:
             [this, scene, bsdf_ctx](LoopState &ls) {
                 // Map incoming ray from sensor to ray after the effect of
                 // gravity
-                Float d          = shortest_distance_point_to_ray(ls.ray);
                 Ray3f bended_ray = Ray3f(ls.ray);
                 bool valid = effective_outgoing_ray(bended_ray);
 
@@ -219,23 +218,6 @@ private:
         return dr::sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
     }
 
-    static Float shortest_distance_point_to_ray(
-        const Ray3f &ray, const std::array<Float, 3> &p0 = { 0.0, 0.0, 0.0 }) {
-
-        // Ray info
-        std::array<Float, 3> p1 = { ray.o[0], ray.o[1], ray.o[2] };
-        std::array<Float, 3> p2 = { ray.o[0] + ray.d[0], ray.o[1] + ray.d[1],
-                                    ray.o[2] + ray.d[2] };
-
-        // Calculate the shortest distance from the ray to point p0
-        Float d = norm(cross_product(
-                      { p0[0] - p1[0], p0[1] - p1[1], p0[2] - p1[2] },
-                      { p0[0] - p2[0], p0[1] - p2[1], p0[2] - p2[2] })) /
-                  norm({ p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] });
-
-        return d;
-    }
-
     static std::array<Float, 3> rotation(const std::string &axis,
                                          const Float &theta,
                                          const std::array<Float, 3> &p) {
@@ -260,53 +242,34 @@ private:
     }
 
     /**
-     * get_outgoing_ray: this looks up the table and return the
+     * get_outgoing_ray: this looks up the table and return the out going ray
      */
-    void get_outgoing_ray(Float slope, std::array<Float, 3> &out_pos,
+    void get_outgoing_ray(std::array<Float, 3> sample, std::array<Float, 3> &out_pos,
                           std::array<Float, 3> &out_mom, bool &valid) const {
         // return origin ray if no lookup table
         if (!has_lookup_table) {
             valid = true;
             return;
         }
-
     }
 
 
     bool effective_outgoing_ray(Ray3f &ray) const {
-        // This function changes ray.o and ray.d
-        // Currently, it is hard-coded.
+        std::array<Float, 3> sample = {0.0, 0.0, 0.0};
+        std::array<Float, 3> ray_o = {ray.o[0], ray.o[1], ray.o[2]};
+        std::array<Float, 3> ray_d = {ray.d[0], ray.d[1], ray.d[2]};
 
-        // For now, if the shortest distance is less than the radius simply
-        // return assume sphere radius = 2
-        Float d = shortest_distance_point_to_ray(ray);
-        if (dr::any(d < 2.0f)) {
-            bool valid = false;
-            return valid;
-        } else {
-            std::array<Float, 3> ray_o = {ray.o[0], ray.o[1], ray.o[2]};
-            std::array<Float, 3> ray_d = {ray.d[0], ray.d[1], ray.d[2]};
+        // get the outgoing ray through lookup map
+        bool valid = true;
+        get_outgoing_ray(sample, ray_o, ray_d, valid);
 
-            // step1: rotate ray.d back to yz plane and get the slope_yz
-            Float theta_fix = dr::atan(ray.d[0] / ray.d[2]);
-            ray_d = rotation("y", -theta_fix, ray_d);
-            Float slope = ray_d[2] / ray_d[1];
-
-            // step2: map to the outgoing ray
-            bool valid = true;
-            get_outgoing_ray(slope, ray_o, ray_d, valid);
-
-            // step3: rotate back
-            ray_o = rotation("y", theta_fix, ray_o);
-            ray_d = rotation("y", theta_fix, ray_d);
-
-            // map to value
-            for (int i = 0; i < 3; i++) {
-                ray.o[i] = ray_o[i];
-                ray.d[i] = ray_d[i];
-            }
-            return valid;
+        // map to value
+        for (int i = 0; i < 3; i++) {
+            ray.o[i] = ray_o[i];
+            ray.d[i] = ray_d[i];
         }
+
+        return valid;
     }
 };
 
