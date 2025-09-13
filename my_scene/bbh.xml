@@ -9,8 +9,7 @@
         <string name="ray_coordinates" value="./ray1.txt"/>
         <string name="lookup_table" value="./lookup_table.txt"/>
         <string name="project_to" value="xz"/>
-        <integer name="width" value="10"/>
-        <integer name="height" value="20"/>
+        <integer name="stride" value="10"/>
     </integrator>
 
     <sensor type="perspective" id="Camera-camera">
