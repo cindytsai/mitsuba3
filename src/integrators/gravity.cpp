@@ -268,8 +268,69 @@ private:
             valid = true;
             return;
         }
+
+        // find the four neighboring sample points in the table
+        find_neighbor_index(sample);
     }
 
+    /**
+     * Return neighboring sample points index in this order
+     * *p1 ---- *p2
+     *  |        |
+     *  |  x     |
+     *  |        |
+     * *p3 ---- *p4
+     *
+     * @return p1, p2, p3, p4
+     */
+    std::array<int, 4> find_neighbor_index(const std::array<Float, 3>& sample) const {
+
+        std::array<int, 4> neighbor_index = {-1, -1, -1, -1};
+
+        // find nearest point where the ray sample closest to the table sample
+        Float min_value = distance(in_sample_pos[0], in_sample_pos[in_sample_pos.size() - 1]);
+        std::size_t min_index = -1;
+        for (std::size_t s = 0; s < in_sample_pos.size(); s++) {
+            Float d = distance(sample, in_sample_pos[s]);
+            if (dr::any(d < min_value)) {
+                min_value = d;
+                min_index = s;
+            }
+        }
+
+        // determine the axis
+        int axis[2] = {0, 1};
+        for (int a = 0; a < 2; a++) {
+            if (project_to.at(a) == 'x') {
+                axis[a] = 0;
+            } else if (project_to.at(a) == 'y') {
+                axis[a] = 1;
+            } else if (project_to.at(a) == 'z') {
+                axis[a] = 2;
+            }
+        }
+
+        return neighbor_index;
+    }
+
+    Float distance(const std::array<Float, 3> &p1, const std::array<Float, 3> &p2) const {
+        std::array<Float, 3> v = {0.0, 0.0, 0.0};
+        for (int i = 0; i < 3; i++) {
+            v[i] = p2[i] - p1[i];
+        }
+
+        Float distance = dr::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+
+        return distance;
+    }
+
+
+    /**
+     * Calculate where ray intersect with the sample plane. (n1.x+n2.y+n3.z=m)
+     * @param sample point where the ray intersects with the sample plane
+     * @param ray_o ray origin
+     * @param ray_d ray direction
+     */
     void project_to_sample_plane(std::array<Float, 3>& sample, std::array<Float, 3> ray_o, std::array<Float, 3> ray_d) const {
         Float t = -(sample_plane[0] * ray_o[0] + sample_plane[1] * ray_o[1] + sample_plane[2] * ray_o[2] - sample_plane[3]) / (sample_plane[0] * ray_d[0] + sample_plane[1] * ray_d[1] + sample_plane[2] * ray_d[2]);
 
