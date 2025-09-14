@@ -10,6 +10,10 @@
         <string name="lookup_table" value="./lookup_table.txt"/>
         <string name="project_to" value="xz"/>
         <integer name="stride" value="10"/>
+        <float name="n1" value="0"/>
+        <float name="n2" value="1"/>
+        <float name="n3" value="0"/>
+        <float name="m" value="-149.12694987860897"/>
     </integrator>
 
     <sensor type="perspective" id="Camera-camera">
