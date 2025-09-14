@@ -261,8 +261,8 @@ private:
     /**
      * get_outgoing_ray: this looks up the table and return the out going ray
      */
-    void get_outgoing_ray(std::array<Float, 3> sample, std::array<Float, 3> &out_pos,
-                          std::array<Float, 3> &out_mom, bool &valid) const {
+    void get_outgoing_ray(const std::array<Float, 3>& sample, std::array<Float, 3> &out_pos,
+                          std::array<Float, 3> &out_dir, bool &valid) const {
         // return origin ray if no lookup table
         if (!has_lookup_table) {
             valid = true;
@@ -275,13 +275,14 @@ private:
 
     /**
      * Return neighboring sample points index in this order
+     * Assume every ray is within the map
      * *p1 ---- *p2
      *  |        |
      *  |  x     |
      *  |        |
      * *p3 ---- *p4
      *
-     * @return p1, p2, p3, p4
+     * @return p1, p2, p3, p4 index, index must within the range of the table
      */
     std::array<int, 4> find_neighbor_index(const std::array<Float, 3>& sample) const {
 
@@ -298,18 +299,48 @@ private:
             }
         }
 
-        // determine the axis
-        int axis[2] = {0, 1};
-        for (int a = 0; a < 2; a++) {
-            if (project_to.at(a) == 'x') {
-                axis[a] = 0;
-            } else if (project_to.at(a) == 'y') {
-                axis[a] = 1;
-            } else if (project_to.at(a) == 'z') {
-                axis[a] = 2;
+        // if index out of range then we pad it
+        Float w = distance(in_sample_pos[0], in_sample_pos[1]);
+        Float h = distance(in_sample_pos[0], in_sample_pos[stride]);
+        Float e[4] = {w, h, w, h};
+        int index_e[4] = {
+            (int) min_index + 1,
+            (int) min_index - stride,
+            (int) min_index - 1,
+            (int) min_index + stride
+        };
+        for (int i = 0; i < 5; i++) {
+            if (index_e[i] >= 0 && index_e[i] < (int) in_sample_pos.size()) {
+                e[i] = distance(sample, in_sample_pos[index_e[i]]);
             }
         }
 
+        if (dr::any(e[2] < e[0])) {
+            if (dr::any(e[3] < e[1])) {
+                neighbor_index[0] = (int) min_index - 1;
+                neighbor_index[1] = (int) min_index;
+                neighbor_index[2] = min_index - 1 + stride;
+                neighbor_index[3] = min_index + stride;
+            } else {
+                neighbor_index[0] = min_index - 1 - stride;
+                neighbor_index[1] = min_index - stride;
+                neighbor_index[2] = (int) min_index - 1;
+                neighbor_index[3] = (int) min_index;
+            }
+        } else {
+            if (dr::any(e[3] < e[1])) {
+                neighbor_index[0] = (int) min_index;
+                neighbor_index[1] = (int) min_index + 1;
+                neighbor_index[2] = min_index + stride;
+                neighbor_index[3] = min_index + 1 + stride;
+            } else {
+                neighbor_index[0] = min_index - stride;
+                neighbor_index[1] = min_index + 1 - stride;
+                neighbor_index[2] = (int) min_index;
+                neighbor_index[3] = (int) min_index + 1;
+            }
+        }
+        
         return neighbor_index;
     }
 
