@@ -271,11 +271,56 @@ private:
         }
 
         // find the four neighboring sample points in the table
-        find_neighbor_index(sample);
+        // if unfortunate the index exceed the map range, then early return
+        std::array<int, 4> neighbor_index = find_neighbor_index(sample);
+        for (int i = 0; i < 4; i++) {
+            if (neighbor_index[i] < 0 || neighbor_index[i] >= (int) in_sample_pos.size()) {
+                return;
+            }
+        }
+
+        // determine the axis
+        int axis[2] = {0, 1};
+        for (int a = 0; a < 2; a++) {
+            if (project_to.at(a) == 'x') {
+                axis[a] = 0;
+            } else if (project_to.at(a) == 'y') {
+                axis[a] = 1;
+            } else if (project_to.at(a) == 'z') {
+                axis[a] = 2;
+            }
+        }
+
+        // interpolation (works for only rectangular grids)
+        std::array<Float, 3> p1 = in_sample_pos[neighbor_index[0]];
+        std::array<Float, 3> p2 = in_sample_pos[neighbor_index[1]];
+        std::array<Float, 3> p3 = in_sample_pos[neighbor_index[2]];
+
+        Float f = dr::abs(sample[axis[0]] - p1[axis[0]]);
+        Float g = dr::abs(p2[axis[0]] - sample[axis[0]]);
+        Float m = dr::abs(p3[axis[1]] - sample[axis[1]]);
+        Float n = dr::abs(sample[axis[1]] - p1[axis[1]]);
+
+        std::array<Float, 3> p1_ray_pos = out_ray_pos[neighbor_index[0]];
+        std::array<Float, 3> p2_ray_pos = out_ray_pos[neighbor_index[1]];
+        std::array<Float, 3> p3_ray_pos = out_ray_pos[neighbor_index[2]];
+        std::array<Float, 3> p4_ray_pos = out_ray_pos[neighbor_index[3]];
+
+        std::array<Float, 3> p1_ray_dir = out_ray_dir[neighbor_index[0]];
+        std::array<Float, 3> p2_ray_dir = out_ray_dir[neighbor_index[1]];
+        std::array<Float, 3> p3_ray_dir = out_ray_dir[neighbor_index[2]];
+        std::array<Float, 3> p4_ray_dir = out_ray_dir[neighbor_index[3]];
+
+        for (int i = 0; i < 3; i++) {
+            out_pos[i] = (m/(n+m)) * (g * p1_ray_pos[i] + f * p2_ray_pos[i]) / (g+f) + \
+                         (n/(n+m)) * (g * p3_ray_pos[i] + f * p4_ray_pos[i]) / (g+f);
+            out_dir[i] = (m/(n+m)) * (g * p1_ray_dir[i] + f * p2_ray_dir[i]) / (g+f) + \
+                         (n/(n+m)) * (g * p3_ray_dir[i] + f * p4_ray_dir[i]) / (g+f);
+        }
     }
 
     /**
-     * Return neighboring sample points index in this order
+     * Return neighboring sample points index, from small to large index
      * Assume every ray is within the map
      * *p1 ---- *p2
      *  |        |
