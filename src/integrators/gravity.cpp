@@ -260,7 +260,11 @@ private:
     }
 
     /**
-     * get_outgoing_ray: this looks up the table and return the out going ray
+     * This looks up the table and return the out going ray.
+     * @param sample the sample point where the incoming ray intersects the sample plane
+     * @param out_pos outgoing ray position
+     * @param out_dir outgoing ray direction
+     * @param valid validity of the outgoing ray
      */
     void get_outgoing_ray(const std::array<Float, 3>& sample, std::array<Float, 3> &out_pos,
                           std::array<Float, 3> &out_dir, bool &valid) const {
@@ -383,6 +387,12 @@ private:
         return neighbor_index;
     }
 
+    /**
+     * Calculate the distance between the point
+     * @param p1 (x,y,z) position of the point
+     * @param p2 (x,y,z) position of the point
+     * @return distance between the point
+     */
     Float distance(const std::array<Float, 3> &p1, const std::array<Float, 3> &p2) const {
         std::array<Float, 3> v = {0.0, 0.0, 0.0};
         for (int i = 0; i < 3; i++) {
@@ -397,18 +407,27 @@ private:
 
     /**
      * Calculate where ray intersect with the sample plane. (n1.x+n2.y+n3.z=m)
+     * The sample plane must be in the way of the trajectory of the rays,
+     * which is t > 0.
+     *
      * @param sample point where the ray intersects with the sample plane
      * @param ray_o ray origin
      * @param ray_d ray direction
      */
     void project_to_sample_plane(std::array<Float, 3>& sample, std::array<Float, 3> ray_o, std::array<Float, 3> ray_d) const {
         Float t = -(sample_plane[0] * ray_o[0] + sample_plane[1] * ray_o[1] + sample_plane[2] * ray_o[2] - sample_plane[3]) / (sample_plane[0] * ray_d[0] + sample_plane[1] * ray_d[1] + sample_plane[2] * ray_d[2]);
+        assert(("Sample plane not in front of the ray.", dr::any(t > 0)));
 
         for (int i = 0; i < 3; i++) {
             sample[i] = ray_o[i] + t * ray_d[i];
         }
     }
 
+    /**
+     * Get the outgoing ray after the effect of gravity
+     * @param ray outgoing ray (position and direction)
+     * @return validity of the ray
+     */
     bool effective_outgoing_ray(Ray3f &ray) const {
         // project ray onto sample plane
         std::array<Float, 3> sample = {0.0, 0.0, 0.0};
