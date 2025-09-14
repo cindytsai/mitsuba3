@@ -5,6 +5,7 @@
 #include <mitsuba/render/integrator.h>
 #include <mitsuba/render/records.h>
 #include <fstream>
+#include <algorithm>
 
 NAMESPACE_BEGIN(mitsuba)
 
@@ -315,32 +316,25 @@ private:
             }
         }
 
+        int shift1 = 0, shift2 = 0;
         if (dr::any(e[2] < e[0])) {
-            if (dr::any(e[3] < e[1])) {
-                neighbor_index[0] = (int) min_index - 1;
-                neighbor_index[1] = (int) min_index;
-                neighbor_index[2] = min_index - 1 + stride;
-                neighbor_index[3] = min_index + stride;
-            } else {
-                neighbor_index[0] = min_index - 1 - stride;
-                neighbor_index[1] = min_index - stride;
-                neighbor_index[2] = (int) min_index - 1;
-                neighbor_index[3] = (int) min_index;
-            }
+            shift1 = -1;
         } else {
-            if (dr::any(e[3] < e[1])) {
-                neighbor_index[0] = (int) min_index;
-                neighbor_index[1] = (int) min_index + 1;
-                neighbor_index[2] = min_index + stride;
-                neighbor_index[3] = min_index + 1 + stride;
-            } else {
-                neighbor_index[0] = min_index - stride;
-                neighbor_index[1] = min_index + 1 - stride;
-                neighbor_index[2] = (int) min_index;
-                neighbor_index[3] = (int) min_index + 1;
-            }
+            shift1 = 1;
         }
-        
+        if (dr::any(e[3] < e[1])) {
+            shift2 = stride;
+        } else {
+            shift2 = -stride;
+        }
+
+        // assigning neighbor index, sort the index from small to large
+        neighbor_index[0] = (int) min_index;
+        neighbor_index[1] = (int) min_index + shift1;
+        neighbor_index[2] = (int) min_index + shift2;
+        neighbor_index[3] = (int) min_index + shift1 + shift2;
+        std::sort(std::begin(neighbor_index), std::end(neighbor_index));
+
         return neighbor_index;
     }
 
