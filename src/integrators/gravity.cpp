@@ -26,7 +26,16 @@ public:
         }
 
         if (props.has_property("project_to")) {
-            this->project_to = props.string("project_to");
+            std::string project_to = props.string("project_to");
+            for (int a = 0; a < 2; a++) {
+                if (project_to.at(a) == 'x') {
+                    project_axis[a] = 0;
+                } else if (project_to.at(a) == 'y') {
+                    project_axis[a] = 1;
+                } else if (project_to.at(a) == 'z') {
+                    project_axis[a] = 2;
+                }
+            }
         }
 
         if (props.has_property("stride")) {
@@ -167,7 +176,7 @@ private:
     bool has_lookup_table = false;
     bool store_ray_coordinate = false;
 
-    std::string project_to = "xy";
+    int project_axis[2] = {0, 1};
     int stride = -1;
     std::array<Float, 4> sample_plane = {0, 0, 0, 0};
     std::vector<std::array<Float,3>> in_sample_pos;
@@ -283,27 +292,15 @@ private:
             }
         }
 
-        // determine the axis
-        int axis[2] = {0, 1};
-        for (int a = 0; a < 2; a++) {
-            if (project_to.at(a) == 'x') {
-                axis[a] = 0;
-            } else if (project_to.at(a) == 'y') {
-                axis[a] = 1;
-            } else if (project_to.at(a) == 'z') {
-                axis[a] = 2;
-            }
-        }
-
         // interpolation (works for only rectangular grids)
         std::array<Float, 3> p1 = in_sample_pos[neighbor_index[0]];
         std::array<Float, 3> p2 = in_sample_pos[neighbor_index[1]];
         std::array<Float, 3> p3 = in_sample_pos[neighbor_index[2]];
 
-        Float f = dr::abs(sample[axis[0]] - p1[axis[0]]);
-        Float g = dr::abs(p2[axis[0]] - sample[axis[0]]);
-        Float m = dr::abs(p3[axis[1]] - sample[axis[1]]);
-        Float n = dr::abs(sample[axis[1]] - p1[axis[1]]);
+        Float f = dr::abs(sample[project_axis[0]] - p1[project_axis[0]]);
+        Float g = dr::abs(p2[project_axis[0]] - sample[project_axis[0]]);
+        Float m = dr::abs(p3[project_axis[1]] - sample[project_axis[1]]);
+        Float n = dr::abs(sample[project_axis[1]] - p1[project_axis[1]]);
 
         std::array<Float, 3> p1_ray_pos = out_ray_pos[neighbor_index[0]];
         std::array<Float, 3> p2_ray_pos = out_ray_pos[neighbor_index[1]];
