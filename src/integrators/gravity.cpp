@@ -21,6 +21,9 @@ public:
             this->ray_coordinates_filename = props.string("ray_coordinates");
             store_ray_coordinate = true;
             create_ray_file();
+            Log(Warn,
+                "ray_coordinates file exists, this run will only store ray coordinates in file '%s'",
+                this->ray_coordinates_filename);
         } else {
             store_ray_coordinate = false;
         }
@@ -126,7 +129,10 @@ public:
                 // Map incoming ray from sensor to ray after the effect of
                 // gravity
                 Ray3f bended_ray = Ray3f(ls.ray);
-                bool valid = effective_outgoing_ray(bended_ray);
+                bool valid = true;
+                if (!store_ray_coordinate) {
+                    valid = effective_outgoing_ray(bended_ray);
+                }
 
                 // Use the calculated ray to get the emitter mapping
                 if (valid) {
@@ -206,8 +212,7 @@ private:
         // read lookup table
         std::ifstream table(this->lookup_table_filename);
         if (!table.is_open()) {
-            Log(Warn, "No lookup table file '%s', so this run will only dump the ray coordinates.",
-                this->lookup_table_filename);
+            Log(Warn, "No lookup table file '%s'", this->lookup_table_filename);
             return;
         }
 
